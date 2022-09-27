@@ -2,34 +2,55 @@ const decoder = new TextDecoder();
 const GET_REQUEST: RequestInit = {
     method: "GET", 
     headers: {
-        "authorization": Deno.env.get("DISCORD_USER_TOKEN") as string,
+        "authorization": Deno.env.get("DISCORD_TOKEN") as string,
     }, 
 }
 
-const getMessage = async (CHANNEL_ID: string, BEFORE: string) => {
-    const response = await fetch(`https://discord.com/api/v9/channels/${CHANNEL_ID}/messages?limit=1&before=${BEFORE}`, GET_REQUEST)
-    const value = (await response.body?.getReader().read())?.value;
-    return JSON.parse(decoder.decode(value))[0];
-}
- 
-export const getMessages = async (CHANNEL_ID: string) => {
-    const FIRST = JSON.parse(decoder.decode((await (await fetch(`https://discord.com/api/v9/channels/${CHANNEL_ID}/messages?limit=1`, GET_REQUEST)).body?.getReader().read())?.value))[0]
-    let id = FIRST.id;
+export const getMessages = async (CHANNEL_ID: string, LIMIT = Infinity, AMOUNT = 100) =>
+{
+    let lastMessageId = 0;
+    let currentlyPrinted = "";
+    let printedCount = 0;
+    let running = true;
 
-    console.log({
-        author: FIRST.author.username,
-        content: FIRST.content,
-        embed: FIRST.attachments[0]?.url
-    });
+    while (running)
+    {
+        const url = new URL(`https://discord.com/api/v9/channels/${CHANNEL_ID}/messages`);
+        url.searchParams.append("limit", AMOUNT.toString());
+        if (lastMessageId)
+            url.searchParams.append("before", lastMessageId.toString());
+        
+        const response = await fetch(url, GET_REQUEST);
+        const reader = (response.body?.getReader()) as ReadableStreamReader;
+    
+        let result = "";
+        while (true)
+        {
+            const { value, done } = await reader.read();
+            if (done) 
+                break;
+    
+            const chunk = decoder.decode(value);
+            result += chunk;
+        }
+        
+        const messages = JSON.parse(result);
+        lastMessageId = messages[messages.length - 1].id;
+        
+        // deno-lint-ignore no-explicit-any
+        messages.every((message: Record<string, any>) => 
+        {
+            currentlyPrinted += `${message.author.username}: ${message.content}\n`;
 
-    while (true) {
-        const MESSAGE = await getMessage(CHANNEL_ID, id);
-        id = MESSAGE.id;
+            console.log(++printedCount);
+            if (printedCount >= LIMIT)
+            {
+                Deno.writeTextFile("out.txt", currentlyPrinted);
+                running = false;
+                return false;
+            }
 
-        console.log({
-            author: MESSAGE.author.username,
-            content: MESSAGE.content,
-            embed: MESSAGE.attachments[0]?.url
+            return true;
         });
-    }
+    } 
 }
