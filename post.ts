@@ -2,7 +2,6 @@ const REQUEST: RequestInit = {
     method: "POST", 
     headers: {
         "authorization": Deno.env.get("DISCORD_TOKEN") as string,
-        "content-type": "application/json",
     }, 
 }
 

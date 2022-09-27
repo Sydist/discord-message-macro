@@ -10,7 +10,6 @@ const DM_ID = Deno.env.get("DM_ID") as string;
 if (GET)
 {
     const LIMIT = parseInt(Deno.env.get("GET_LIMIT") as string);
-
     getMessages(DM_ID, LIMIT);
 }
 
