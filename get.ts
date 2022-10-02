@@ -1,4 +1,3 @@
-const decoder = new TextDecoder();
 const GET_REQUEST: RequestInit = {
     method: "GET", 
     headers: {
@@ -21,20 +20,8 @@ export const getMessages = async (CHANNEL_ID: string, LIMIT = Infinity, AMOUNT =
             url.searchParams.append("before", lastMessageId.toString());
         
         const response = await fetch(url, GET_REQUEST);
-        const reader = (response.body?.getReader()) as ReadableStreamReader;
-    
-        let result = "";
-        while (true)
-        {
-            const { value, done } = await reader.read();
-            if (done) 
-                break;
-    
-            const chunk = decoder.decode(value);
-            result += chunk;
-        }
-        
-        const messages = JSON.parse(result);
+        const messages = await response.json();
+
         lastMessageId = messages[messages.length - 1].id;
         
         // deno-lint-ignore no-explicit-any
